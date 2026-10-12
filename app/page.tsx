@@ -17,12 +17,25 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
 
 async function handleLike(item: Resultat) {
+  // Vérifie si ce film est déjà dans les favoris
+  const { data: existing } = await supabase
+    .from("likes")
+    .select("id")
+    .eq("tmdb_id", item.tmdb_id)
+    .eq("titre", item.titre);
+
+  if (existing && existing.length > 0) {
+    alert("Déjà dans tes favoris !");
+    return;
+  }
+
   const { error } = await supabase.from("likes").insert({
     tmdb_id: item.tmdb_id,
     titre: item.titre,
     annee: item.annee,
     type: item.type,
     poster: item.poster,
+    resume: item.resume,
   });
 
   if (error) {
@@ -75,7 +88,11 @@ async function handleLike(item: Resultat) {
     <div className="flex-1">
       <h3 className="font-semibold text-lg">{item.titre} <span className="text-gray-500 font-normal">({item.annee})</span></h3>
       <span className="text-xs uppercase text-blue-600 font-medium">{item.type}</span>
-      {item.resume && <p className="text-sm text-gray-600 mt-1">{item.resume}</p>}
+      <p className="text-sm text-gray-600 mt-1">
+      {item.resume
+      ? (item.resume.length > 300 ? item.resume.slice(0, 300) + "..." : item.resume)
+      : "Résumé non disponible."}
+      </p>
       <button
         onClick={() => handleLike(item)}
         className="mt-2 text-red-500 hover:text-red-700"
