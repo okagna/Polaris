@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import Link from "next/link";
 
 type Favori = {
   id: number;
@@ -55,26 +56,24 @@ export default function Favoris() {
       <div className="grid gap-4">
         {favoris.map((item) => (
           <div key={item.id} className="border border-gray-200 rounded-lg p-4 flex gap-4 bg-white shadow-sm">
-            {item.poster && (
-              <img src={item.poster} alt={item.titre} className="w-24 rounded" />
-            )}
-            <div className="flex-1">
-              <h3 className="font-semibold text-lg">{item.titre} <span className="text-gray-500 font-normal">({item.annee})</span></h3>
-              <span className="text-xs uppercase text-blue-600 font-medium">{item.type}</span>
-              <p className="text-sm text-gray-600 mt-1">
-                {item.resume
-              ? (item.resume.length > 300 ? item.resume.slice(0, 300) + "..." : item.resume)
-                : "Résumé non disponible."}
-            </p>
-            </div>
-            <button
-              onClick={() => handleDelete(item.id)}
-              className="text-gray-400 hover:text-red-600 self-start"
-              title="Retirer des favoris"
-            >
-              ✕
-            </button>
-          </div>
+  <Link href={`/favoris/${item.id}`} className="flex gap-4 flex-1">
+    {item.poster && (
+      <img src={item.poster} alt={item.titre} className="w-24 rounded" />
+    )}
+    <div className="flex-1">
+      <h3 className="font-semibold text-lg">{item.titre} <span className="text-gray-500 font-normal">({item.annee})</span></h3>
+      <span className="text-xs uppercase text-blue-600 font-medium">{item.type}</span>
+      {item.resume && (
+        <p className="text-sm text-gray-600 mt-1">
+          {item.resume.length > 300 ? item.resume.slice(0, 300) + "..." : item.resume}
+        </p>
+      )}
+    </div>
+  </Link>
+  <button onClick={() => handleDelete(item.id)} className="text-gray-400 hover:text-red-600 self-start" title="Retirer des favoris">
+    ✕
+  </button>
+</div>
         ))}
       </div>
     </div>

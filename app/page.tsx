@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
 import { supabase } from "./lib/supabase";
+import { useState, useEffect } from "react";
 
 type Resultat = {
   titre: string;
@@ -15,6 +15,14 @@ export default function Home() {
   const [description, setDescription] = useState("");
   const [results, setResults] = useState<Resultat[]>([]);
   const [loading, setLoading] = useState(false);
+
+// Charger la recherche précédente au montage de la page
+useEffect(() => {
+  const savedDescription = localStorage.getItem("polaris_description");
+  const savedResults = localStorage.getItem("polaris_results");
+  if (savedDescription) setDescription(savedDescription);
+  if (savedResults) setResults(JSON.parse(savedResults));
+}, []);
 
 async function handleLike(item: Resultat) {
   // Vérifie si ce film est déjà dans les favoris
@@ -55,6 +63,8 @@ async function handleLike(item: Resultat) {
     });
     const data = await res.json();
     setResults(data.results || []);
+    localStorage.setItem("polaris_description", description);
+    localStorage.setItem("polaris_results", JSON.stringify(data.results || []));
     setLoading(false);
   }
 
