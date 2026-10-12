@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { supabase } from "./lib/supabase";
 
 type Resultat = {
   titre: string;
@@ -15,6 +16,23 @@ export default function Home() {
   const [results, setResults] = useState<Resultat[]>([]);
   const [loading, setLoading] = useState(false);
 
+async function handleLike(item: Resultat) {
+  const { error } = await supabase.from("likes").insert({
+    tmdb_id: item.tmdb_id,
+    titre: item.titre,
+    annee: item.annee,
+    type: item.type,
+    poster: item.poster,
+  });
+
+  if (error) {
+    alert("Erreur lors de l'ajout aux favoris");
+    console.error(error);
+  } else {
+    alert("Ajouté aux favoris !");
+  }
+}
+
   async function handleSearch() {
     setLoading(true);
     const res = await fetch("/api/search", {
@@ -28,33 +46,46 @@ export default function Home() {
   }
 
   return (
-    <main style={{ padding: "2rem", maxWidth: "800px", margin: "0 auto" }}>
-      <h1>Polaris</h1>
-      <p>Décris ce dont tu te souviens, on t'aide à retrouver le titre.</p>
+    <div className="max-w-3xl mx-auto">
+      <h1 className="text-3xl font-bold mb-2">Retrouve ton titre</h1>
+      <p className="text-gray-600 mb-6">Décris ce dont tu te souviens, on s'occupe du reste.</p>
 
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         placeholder="Ex: un film où un mec revit la même journée en boucle..."
         rows={4}
-        style={{ width: "100%", padding: "0.5rem" }}
+        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
 
-      <button onClick={handleSearch} disabled={loading} style={{ marginTop: "1rem", padding: "0.5rem 1rem" }}>
+      <button
+        onClick={handleSearch}
+        disabled={loading}
+        className="mt-4 bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+      >
         {loading ? "Recherche en cours..." : "Rechercher"}
       </button>
 
-      <div style={{ marginTop: "2rem", display: "grid", gap: "1rem" }}>
+      <div className="mt-8 grid gap-4">
         {results.map((item, i) => (
-          <div key={i} style={{ border: "1px solid #ccc", padding: "1rem", borderRadius: "8px" }}>
-            <strong>{item.titre}</strong> ({item.annee}) — {item.type}
-            {item.poster && (
-              <img src={item.poster} alt={item.titre} style={{ maxWidth: "150px", display: "block", marginTop: "0.5rem" }} />
-            )}
-            {item.resume && <p>{item.resume}</p>}
-          </div>
-        ))}
+  <div key={i} className="border border-gray-200 rounded-lg p-4 flex gap-4 bg-white shadow-sm">
+    {item.poster && (
+      <img src={item.poster} alt={item.titre} className="w-24 rounded" />
+    )}
+    <div className="flex-1">
+      <h3 className="font-semibold text-lg">{item.titre} <span className="text-gray-500 font-normal">({item.annee})</span></h3>
+      <span className="text-xs uppercase text-blue-600 font-medium">{item.type}</span>
+      {item.resume && <p className="text-sm text-gray-600 mt-1">{item.resume}</p>}
+      <button
+        onClick={() => handleLike(item)}
+        className="mt-2 text-red-500 hover:text-red-700"
+      >
+        ❤️ Ajouter aux favoris
+      </button>
+    </div>
+  </div>
+))}
       </div>
-    </main>
+    </div>
   );
 }
