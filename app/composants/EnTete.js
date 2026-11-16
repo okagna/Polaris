@@ -43,6 +43,9 @@ export default function EnTete() {
           <Link href="/" className={styleLien(chemin === "/" || chemin.startsWith("/recherche"))}>
             {t.recherche}
           </Link>
+          <Link href="/explorer" className={styleLien(chemin.startsWith("/explorer"))}>
+            {t.explorer}
+          </Link>
           <Link href="/favoris" className={styleLien(chemin.startsWith("/favoris"))}>
             {t.favoris}
           </Link>
