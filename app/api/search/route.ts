@@ -1,3 +1,7 @@
+declare const process: {
+  env: Record<string, string | undefined>;
+};
+
 export async function POST(request: Request) {
   const { description } = await request.json();
 

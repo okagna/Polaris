@@ -1,118 +1,195 @@
 "use client";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "./lib/supabase";
-import { useState, useEffect } from "react";
 
 type Resultat = {
   titre: string;
   annee: string;
   type: string;
   poster?: string | null;
+  backdrop?: string | null;
   resume?: string | null;
   tmdb_id?: number | null;
 };
 
 export default function Home() {
+  const router = useRouter();
   const [description, setDescription] = useState("");
-  const [results, setResults] = useState<Resultat[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [likedTitles, setLikedTitles] = useState<string[]>([]);
+  const [trending, setTrending] = useState<Resultat[]>([]);
+  const [trendingWindow, setTrendingWindow] = useState<"day" | "week">("day");
+  const trendingRef = useRef<HTMLDivElement>(null);
 
-// Charger la recherche précédente au montage de la page
-useEffect(() => {
-  const savedDescription = localStorage.getItem("polaris_description");
-  const savedResults = localStorage.getItem("polaris_results");
-  if (savedDescription) setDescription(savedDescription);
-  if (savedResults) setResults(JSON.parse(savedResults));
-}, []);
-
-async function handleLike(item: Resultat) {
-  // Vérifie si ce film est déjà dans les favoris
-  const { data: existing } = await supabase
-    .from("likes")
-    .select("id")
-    .eq("tmdb_id", item.tmdb_id)
-    .eq("titre", item.titre);
-
-  if (existing && existing.length > 0) {
-    alert("Déjà dans tes favoris !");
-    return;
-  }
-
-  const { error } = await supabase.from("likes").insert({
-    tmdb_id: item.tmdb_id,
-    titre: item.titre,
-    annee: item.annee,
-    type: item.type,
-    poster: item.poster,
-    resume: item.resume,
-  });
-
-  if (error) {
-    alert("Erreur lors de l'ajout aux favoris");
-    console.error(error);
-  } else {
-    alert("Ajouté aux favoris !");
-  }
-}
-
-  async function handleSearch() {
-    setLoading(true);
-    const res = await fetch("/api/search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ description }),
+  function scrollTrending(direction: "left" | "right") {
+    trendingRef.current?.scrollBy({
+      left: direction === "left" ? -600 : 600,
+      behavior: "smooth",
     });
-    const data = await res.json();
-    setResults(data.results || []);
-    localStorage.setItem("polaris_description", description);
-    localStorage.setItem("polaris_results", JSON.stringify(data.results || []));
-    setLoading(false);
   }
+
+  useEffect(() => {
+    async function loadLikes() {
+      const { data } = await supabase.from("likes").select("titre");
+      if (data) setLikedTitles(data.map((d) => d.titre));
+    }
+    loadLikes();
+  }, []);
+
+  useEffect(() => {
+    async function loadTrending() {
+      const res = await fetch(`/api/trending?window=${trendingWindow}`);
+      const data = await res.json();
+      setTrending(data.results || []);
+    }
+    loadTrending();
+  }, [trendingWindow]);
+
+  function handleSearch() {
+    if (!description.trim()) return;
+    router.push(`/recherche?q=${encodeURIComponent(description.trim())}`);
+  }
+
+  async function handleLike(item: Resultat) {
+    const isLiked = likedTitles.includes(item.titre);
+    if (isLiked) {
+      const { error } = await supabase
+        .from("likes")
+        .delete()
+        .eq("tmdb_id", item.tmdb_id)
+        .eq("titre", item.titre);
+      if (!error) setLikedTitles((prev) => prev.filter((t) => t !== item.titre));
+      else console.error(error);
+    } else {
+      const { error } = await supabase.from("likes").insert({
+        tmdb_id: item.tmdb_id,
+        titre: item.titre,
+        annee: item.annee,
+        type: item.type,
+        poster: item.poster,
+        resume: item.resume,
+      });
+      if (!error) setLikedTitles((prev) => [...prev, item.titre]);
+      else console.error(error);
+    }
+  }
+
+  function Poster({ item }: { item: Resultat }) {
+    const liked = likedTitles.includes(item.titre);
+    return (
+      <div className="relative rounded-lg overflow-hidden shadow-md bg-gray-100 aspect-[2/3]">
+        {item.poster ? (
+          <img src={item.poster} alt={item.titre} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm p-2 text-center">
+            Pas d'affiche
+          </div>
+        )}
+        <button
+          onClick={() => handleLike(item)}
+          className={`absolute top-2 right-2 rounded-full w-8 h-8 flex items-center justify-center transition ${
+            liked ? "bg-red-600 text-white" : "bg-[#032541]/80 text-white hover:bg-[#01b4e4]"
+          }`}
+          title={liked ? "Retirer des favoris" : "Ajouter aux favoris"}
+        >
+          ❤
+        </button>
+      </div>
+    );
+  }
+
+  const heroImage = trending.find((t) => t.backdrop)?.backdrop;
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <h1 className="text-3xl font-bold mb-2">Retrouve ton titre</h1>
-      <p className="text-gray-600 mb-6">Décris ce dont tu te souviens, on s'occupe du reste.</p>
-
-      <textarea
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        placeholder="Ex: un film où un mec revit la même journée en boucle..."
-        rows={4}
-        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
-
-      <button
-        onClick={handleSearch}
-        disabled={loading}
-        className="mt-4 bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+    <div>
+      {/* Bannière */}
+      <section
+        className="relative rounded-lg overflow-hidden mb-10"
+        style={{
+          backgroundImage: heroImage ? `url(${heroImage})` : undefined,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
       >
-        {loading ? "Recherche en cours..." : "Rechercher"}
-      </button>
+        <div className="absolute inset-0 bg-gradient-to-r from-[#032541]/90 to-[#01b4e4]/60" />
+        <div className="relative px-8 py-16 text-white">
+          <h1 className="text-4xl md:text-5xl font-bold">Bienvenue.</h1>
+          <p className="text-xl md:text-2xl font-semibold mt-1 mb-6">
+            Retrouve le titre que tu as oublié : film, série, jeu ou livre.
+          </p>
 
-      <div className="mt-8 grid gap-4">
-        {results.map((item, i) => (
-  <div key={i} className="border border-gray-200 rounded-lg p-4 flex gap-4 bg-white shadow-sm">
-    {item.poster && (
-      <img src={item.poster} alt={item.titre} className="w-24 rounded" />
-    )}
-    <div className="flex-1">
-      <h3 className="font-semibold text-lg">{item.titre} <span className="text-gray-500 font-normal">({item.annee})</span></h3>
-      <span className="text-xs uppercase text-blue-600 font-medium">{item.type}</span>
-      <p className="text-sm text-gray-600 mt-1">
-      {item.resume
-      ? (item.resume.length > 300 ? item.resume.slice(0, 300) + "..." : item.resume)
-      : "Résumé non disponible."}
-      </p>
-      <button
-        onClick={() => handleLike(item)}
-        className="mt-2 text-red-500 hover:text-red-700"
-      >
-        ❤️ Ajouter aux favoris
-      </button>
-    </div>
-  </div>
-))}
-      </div>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSearch();
+              }
+            }}
+            placeholder="Décris ce dont tu te souviens... ex : un film où un mec revit la même journée en boucle"
+            rows={3}
+            className="w-full p-4 rounded-lg text-gray-800 bg-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#90cea1]"
+          />
+          <button
+            onClick={handleSearch}
+            className="mt-4 bg-gradient-to-r from-[#90cea1] to-[#01b4e4] text-[#032541] font-bold px-8 py-2 rounded-full hover:opacity-90"
+          >
+            Rechercher
+          </button>
+        </div>
+      </section>
+
+      {/* Tendances */}
+      <section>
+        <div className="flex items-center gap-4 mb-4">
+          <h2 className="text-2xl font-semibold text-[#032541]">Tendances</h2>
+          <div className="flex border border-[#032541] rounded-full overflow-hidden text-sm font-semibold">
+            <button
+              onClick={() => setTrendingWindow("day")}
+              className={`px-4 py-1 ${trendingWindow === "day" ? "bg-[#032541] text-[#90cea1]" : "text-[#032541]"}`}
+            >
+              Aujourd'hui
+            </button>
+            <button
+              onClick={() => setTrendingWindow("week")}
+              className={`px-4 py-1 ${trendingWindow === "week" ? "bg-[#032541] text-[#90cea1]" : "text-[#032541]"}`}
+            >
+              Cette semaine
+            </button>
+          </div>
+        </div>
+
+        <div className="relative">
+          <button
+            onClick={() => scrollTrending("left")}
+            className="absolute left-0 top-[120px] -translate-y-1/2 z-10 bg-[#032541]/80 hover:bg-[#01b4e4] text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg text-2xl"
+            aria-label="Précédent"
+          >
+            ‹
+          </button>
+
+          <div ref={trendingRef} className="flex gap-4 overflow-x-auto pb-4 scroll-smooth">
+            {trending.map((item) => (
+              <div key={`${item.type}-${item.tmdb_id}`} className="w-40 shrink-0">
+                <Poster item={item} />
+                <h3 className="mt-2 font-semibold text-sm text-[#032541] line-clamp-2">{item.titre}</h3>
+                <p className="text-xs text-gray-500">
+                  {item.annee} · {item.type}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={() => scrollTrending("right")}
+            className="absolute right-0 top-[120px] -translate-y-1/2 z-10 bg-[#032541]/80 hover:bg-[#01b4e4] text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg text-2xl"
+            aria-label="Suivant"
+          >
+            ›
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
