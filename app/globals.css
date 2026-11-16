@@ -1,26 +1,41 @@
+/* ============================================================
+   Styles globaux du site — thème "ciel de nuit"
+   ============================================================ */
+
+/* Active Tailwind (les classes comme "text-sm", "bg-carte"...) */
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* ------------------------------------------------------------
+   Les couleurs et polices du thème.
+   Chaque ligne "--color-xxx" crée automatiquement des classes
+   Tailwind : bg-xxx, text-xxx, border-xxx...
+   Ex : --color-accent  ->  bg-accent, text-accent, border-accent
+   ------------------------------------------------------------ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-fond: #0B0F1A;          /* fond de la page */
+  --color-carte: #121829;         /* fond des cartes / encadrés */
+  --color-carte-2: #1A2236;       /* fond un peu plus clair (pastilles, menu actif) */
+  --color-bordure: #263049;       /* bordures */
+  --color-texte: #EEF1F7;         /* texte principal */
+  --color-texte-2: #A3ACC2;       /* texte secondaire (années, infos) */
+  --color-texte-3: #8A93AB;       /* petites aides, placeholders */
+  --color-clair: #C9CFDD;         /* paragraphes (résumés) */
+  --color-accent: #F2C14E;        /* doré : l'étoile polaire */
+  --color-accent-hover: #FFD978;  /* doré au survol */
+  --color-coeur: #FF6B7A;         /* cœur des favoris */
+
+  /* Polices chargées dans layout.js */
+  --font-sans: var(--font-inter);
+  --font-titre: var(--font-space-grotesk);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Appliquées à toute la page */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-fond);
+  color: var(--color-texte);
+}
+
+/* Couleur du texte d'exemple dans les champs */
+::placeholder {
+  color: var(--color-texte-3);
 }
